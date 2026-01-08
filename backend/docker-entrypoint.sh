@@ -145,7 +145,7 @@ if [ $MIGRATE_EXIT -eq 0 ]; then
     # Verify critical tables exist
     echo "Verifying database tables..."
     TABLES_OK=true
-    for table in users sessions cache cache_locks jobs job_batches failed_jobs password_reset_tokens personal_access_tokens; do
+    for table in users sessions cache cache_locks jobs job_batches failed_jobs password_reset_tokens personal_access_tokens tasks; do
         if php -r "try { \$pdo = new PDO('mysql:host=mysql;dbname=laravel', 'laravel', 'laravel'); \$stmt = \$pdo->query(\"SHOW TABLES LIKE '$table'\"); exit(\$stmt->rowCount() > 0 ? 0 : 1); } catch (Exception \$e) { exit(1); }" 2>/dev/null; then
             echo "  ✓ Table '$table' exists"
         else
@@ -219,11 +219,31 @@ else
                 expiration INT NOT NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci\");
             
+            // Create tasks table
+            \$pdo->exec(\"CREATE TABLE IF NOT EXISTS tasks (
+                id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                title VARCHAR(255) NOT NULL,
+                description TEXT NULL,
+                status ENUM('pending', 'in_progress', 'completed') NOT NULL DEFAULT 'pending',
+                due_date DATE NULL,
+                created_at TIMESTAMP NULL,
+                updated_at TIMESTAMP NULL,
+                deleted_at TIMESTAMP NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci\");
+            
+            // Create migrations table if it doesn't exist
+            \$pdo->exec(\"CREATE TABLE IF NOT EXISTS migrations (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                migration VARCHAR(255) NOT NULL,
+                batch INT NOT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci\");
+            
             // Mark migrations as run
             \$pdo->exec(\"INSERT IGNORE INTO migrations (migration, batch) VALUES 
                 ('2024_01_01_000000_create_users_table', 1),
                 ('2024_01_01_000001_create_cache_table', 1),
-                ('2024_01_01_000002_create_sessions_table', 1)\");
+                ('2024_01_01_000002_create_sessions_table', 1),
+                ('2026_01_08_104236_create_tasks_table', 1)\");
             
             echo 'Critical tables created successfully\n';
         } catch (Exception \$e) {
@@ -247,5 +267,17 @@ echo "✓ Caches cleared"
 echo ""
 echo "=== Laravel Backend Ready ==="
 echo ""
+
+
+# Run database seeder if tasks table is empty
+echo "Checking if tasks table needs seeding..."
+TASK_COUNT=$(php -r "try { \$pdo = new PDO('mysql:host=mysql;dbname=laravel', 'laravel', 'laravel'); \$stmt = \$pdo->query('SELECT COUNT(*) as count FROM tasks'); \$result = \$stmt->fetch(PDO::FETCH_ASSOC); echo \$result['count']; } catch (Exception \$e) { echo '0'; }" 2>/dev/null || echo "0")
+if [ "$TASK_COUNT" = "0" ]; then
+    echo "Seeding tasks table with sample data..."
+    php artisan db:seed --class=TaskSeeder --force || echo "⚠ Seeding had issues, but continuing..."
+    echo "✓ Sample tasks created"
+else
+    echo "✓ Tasks table already has data ($TASK_COUNT tasks)"
+fi
 
 exec "$@"
