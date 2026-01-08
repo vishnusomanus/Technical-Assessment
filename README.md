@@ -2,6 +2,8 @@
 
 A full-stack task management application built with Laravel (backend) and Vue.js (frontend), containerized with Docker.
 
+**Repository:** [https://github.com/vishnusomanus/Technical-Assessment](https://github.com/vishnusomanus/Technical-Assessment)
+
 ## Features
 
 - ✅ Task CRUD operations (Create, Read, Update, Delete)
@@ -31,8 +33,8 @@ A full-stack task management application built with Laravel (backend) and Vue.js
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
-   cd assesment
+   git clone https://github.com/vishnusomanus/Technical-Assessment.git
+   cd Technical-Assessment
    ```
 
 2. **Start the application**
